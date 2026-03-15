@@ -1,26 +1,29 @@
 const { Client, GatewayIntentBits } = require("discord.js");
 const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require("@discordjs/voice");
+const play = require("play-dl");
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildVoiceStates
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
   ]
 });
 
-client.once("clientReady", () => {
+const player = createAudioPlayer();
+
+client.once("ready", () => {
   console.log("Bot đã online!");
 });
 
 client.on("messageCreate", async (message) => {
 
-  if (message.content === "!chill") {
+  if (message.content === "!radio") {
 
     const voiceChannel = message.member.voice.channel;
 
-    if (!voiceChannel) {
-      return message.reply("Vào voice trước!");
-    }
+    if (!voiceChannel) return message.reply("Vào voice trước!");
 
     const connection = joinVoiceChannel({
       channelId: voiceChannel.id,
@@ -28,16 +31,16 @@ client.on("messageCreate", async (message) => {
       adapterCreator: message.guild.voiceAdapterCreator
     });
 
-    const player = createAudioPlayer();
+    const stream = await play.stream("https://www.youtube.com/watch?v=jfKfPfyJRdk");
 
-    const resource = createAudioResource(
-      "https://stream.zeno.fm/f3wvbbqmdg8uv"
-    );
+    const resource = createAudioResource(stream.stream, {
+      inputType: stream.type
+    });
 
     player.play(resource);
     connection.subscribe(player);
 
-    message.reply("🎧 Đang phát nhạc chill 24/7");
+    message.reply("🎧 Đang phát radio YouTube 24/7");
   }
 
 });
