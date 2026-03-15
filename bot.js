@@ -10,8 +10,8 @@ const {
 } = require("@discordjs/voice");
 
 const ytdl = require("@distube/ytdl-core");
+const http = require("http"); // thêm web server
 
-// Discord client
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -21,7 +21,7 @@ const client = new Client({
   ]
 });
 
-// Audio player
+// Player ổn định hơn
 const player = createAudioPlayer({
   behaviors: {
     noSubscriber: NoSubscriberBehavior.Play
@@ -32,7 +32,6 @@ client.once("clientReady", () => {
   console.log(`✅ Bot online: ${client.user.tag}`);
 });
 
-// Player events
 player.on("error", error => {
   console.error("❌ Player error:", error.message);
 });
@@ -41,11 +40,9 @@ player.on("stateChange", (oldState, newState) => {
   console.log(`Player: ${oldState.status} -> ${newState.status}`);
 });
 
-// Message handler
 client.on("messageCreate", async (message) => {
   if (message.author.bot || !message.guild) return;
 
-  // PLAY COMMAND
   if (message.content.startsWith("!play")) {
 
     const args = message.content.split(" ");
@@ -70,20 +67,16 @@ client.on("messageCreate", async (message) => {
         selfDeaf: false
       });
 
-      // Chờ kết nối voice
       await entersState(connection, VoiceConnectionStatus.Ready, 30000);
 
-      connection.on("stateChange", (oldState, newState) => {
-        console.log(`Voice: ${oldState.status} -> ${newState.status}`);
-      });
-
       const stream = ytdl(url, {
-        filter: "audioonly",
         quality: "highestaudio",
-        highWaterMark: 1 << 26
+        filter: "audioonly",
+        highWaterMark: 1 << 25
       });
 
       const resource = createAudioResource(stream, {
+        inputType: "arbitrary",
         inlineVolume: true
       });
 
@@ -98,13 +91,11 @@ client.on("messageCreate", async (message) => {
     }
   }
 
-  // STOP COMMAND
   if (message.content === "!stop") {
     player.stop();
     message.reply("⛔ Đã dừng nhạc!");
   }
 
-  // LEAVE COMMAND
   if (message.content === "!leave") {
     const connection = getVoiceConnection(message.guild.id);
     if (connection) connection.destroy();
@@ -112,13 +103,14 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-// Login bot
 client.login(process.env.TOKEN);
 
-// Web server nhỏ cho Render
-const http = require("http");
+// ===== Web server để Render detect port =====
+const PORT = process.env.PORT || 10000;
 
 http.createServer((req, res) => {
-  res.write("Bot is running");
-  res.end();
-}).listen(3000);
+  res.writeHead(200);
+  res.end("Bot is running");
+}).listen(PORT, "0.0.0.0", () => {
+  console.log("🌐 Web server running on port " + PORT);
+});
