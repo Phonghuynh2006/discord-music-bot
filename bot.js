@@ -10,7 +10,7 @@ const {
 } = require("@discordjs/voice");
 
 const ytdl = require("@distube/ytdl-core");
-const http = require("http"); // thêm web server
+const http = require("http");
 
 const client = new Client({
   intents: [
@@ -21,23 +21,18 @@ const client = new Client({
   ]
 });
 
-// Player ổn định hơn
 const player = createAudioPlayer({
   behaviors: {
     noSubscriber: NoSubscriberBehavior.Play
   }
 });
 
-client.once("clientReady", () => {
+client.once("ready", () => {
   console.log(`✅ Bot online: ${client.user.tag}`);
 });
 
 player.on("error", error => {
   console.error("❌ Player error:", error.message);
-});
-
-player.on("stateChange", (oldState, newState) => {
-  console.log(`Player: ${oldState.status} -> ${newState.status}`);
 });
 
 client.on("messageCreate", async (message) => {
@@ -53,7 +48,6 @@ client.on("messageCreate", async (message) => {
     }
 
     const voiceChannel = message.member.voice.channel;
-
     if (!voiceChannel) {
       return message.reply("❌ Bạn phải vào phòng voice trước!");
     }
@@ -64,7 +58,19 @@ client.on("messageCreate", async (message) => {
         channelId: voiceChannel.id,
         guildId: message.guild.id,
         adapterCreator: message.guild.voiceAdapterCreator,
-        selfDeaf: false
+        selfDeaf: true
+      });
+
+      // reconnect nếu voice bị rớt
+      connection.on("stateChange", (oldState, newState) => {
+        if (newState.status === "disconnected") {
+          try {
+            connection.rejoin();
+            console.log("🔄 Reconnecting voice...");
+          } catch {
+            connection.destroy();
+          }
+        }
       });
 
       await entersState(connection, VoiceConnectionStatus.Ready, 60000);
@@ -73,13 +79,10 @@ client.on("messageCreate", async (message) => {
         filter: "audioonly",
         quality: "highestaudio",
         highWaterMark: 1 << 25,
-        liveBuffer: 4900
+        dlChunkSize: 0
       });
 
-      const resource = createAudioResource(stream, {
-        inputType: "arbitrary",
-        inlineVolume: true
-      });
+      const resource = createAudioResource(stream);
 
       player.play(resource);
       connection.subscribe(player);
@@ -88,7 +91,7 @@ client.on("messageCreate", async (message) => {
 
     } catch (err) {
       console.error("VOICE ERROR:", err);
-      message.reply("❌ Không phát được audio từ video!");
+      message.reply("❌ Không phát được audio!");
     }
   }
 
@@ -105,6 +108,7 @@ client.on("messageCreate", async (message) => {
 });
 
 client.login(process.env.TOKEN);
+
 
 // ===== Web server để Render detect port =====
 const PORT = process.env.PORT || 10000;
