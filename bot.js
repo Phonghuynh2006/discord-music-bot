@@ -1,12 +1,6 @@
 const { Client, GatewayIntentBits } = require("discord.js");
-const {
-  joinVoiceChannel,
-  createAudioPlayer,
-  createAudioResource,
-  entersState,
-  VoiceConnectionStatus
-} = require("@discordjs/voice");
-const play = require("play-dl");
+const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require("@discordjs/voice");
+const ytdl = require("ytdl-core");
 
 const client = new Client({
   intents: [
@@ -19,7 +13,7 @@ const client = new Client({
 
 const player = createAudioPlayer();
 
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log("Bot đã online!");
 });
 
@@ -38,10 +32,6 @@ client.on("messageCreate", async (message) => {
       return message.reply("❌ Bạn phải vào voice trước!");
     }
 
-    if (!url) {
-      return message.reply("❌ Bạn phải gửi link nhạc!");
-    }
-
     try {
 
       const connection = joinVoiceChannel({
@@ -50,13 +40,12 @@ client.on("messageCreate", async (message) => {
         adapterCreator: message.guild.voiceAdapterCreator
       });
 
-      await entersState(connection, VoiceConnectionStatus.Ready, 20000);
-
-      const stream = await play.stream(url);
-
-      const resource = createAudioResource(stream.stream, {
-        inputType: stream.type
+      const stream = ytdl(url, {
+        filter: "audioonly",
+        quality: "highestaudio"
       });
+
+      const resource = createAudioResource(stream);
 
       player.play(resource);
       connection.subscribe(player);
@@ -65,7 +54,7 @@ client.on("messageCreate", async (message) => {
 
     } catch (err) {
       console.log(err);
-      message.reply("❌ Lỗi khi phát nhạc");
+      message.reply("❌ Không phát được nhạc");
     }
 
   }
