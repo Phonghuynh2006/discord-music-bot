@@ -22,29 +22,34 @@ client.on("messageCreate", async (message) => {
     const args = message.content.split(" ");
     const url = args[1];
 
-    if (!url) return message.reply("Gửi link YouTube!");
-
     const voiceChannel = message.member.voice.channel;
-    if (!voiceChannel) return message.reply("Bạn phải vào voice trước!");
+
+    if (!voiceChannel) {
+      return message.reply("Bạn phải vào voice channel trước!");
+    }
+
+    if (!url) {
+      return message.reply("Hãy gửi link YouTube!");
+    }
 
     const connection = joinVoiceChannel({
       channelId: voiceChannel.id,
       guildId: message.guild.id,
-      adapterCreator: message.guild.voiceAdapterCreator
+      adapterCreator: message.guild.voiceAdapterCreator,
     });
 
     const stream = await play.stream(url);
 
     const resource = createAudioResource(stream.stream, {
-      inputType: stream.type
+      inputType: stream.type,
     });
 
     const player = createAudioPlayer();
-    connection.subscribe(player);
 
     player.play(resource);
+    connection.subscribe(player);
 
-    message.reply("Đang phát nhạc 🎵");
+    message.reply("🎵 Đang phát nhạc!");
   }
 });
 
