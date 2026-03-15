@@ -1,9 +1,8 @@
 const { Client, GatewayIntentBits } = require("discord.js");
-const { 
+const {
   joinVoiceChannel,
   createAudioPlayer,
   createAudioResource,
-  AudioPlayerStatus,
   entersState,
   VoiceConnectionStatus
 } = require("@discordjs/voice");
@@ -18,11 +17,14 @@ const client = new Client({
   ]
 });
 
-client.once("clientReady", () => {
+const player = createAudioPlayer();
+
+client.once("ready", () => {
   console.log("Bot đã online!");
 });
 
 client.on("messageCreate", async (message) => {
+
   if (message.author.bot) return;
 
   if (message.content.startsWith("!play")) {
@@ -45,10 +47,10 @@ client.on("messageCreate", async (message) => {
       const connection = joinVoiceChannel({
         channelId: voiceChannel.id,
         guildId: message.guild.id,
-        adapterCreator: message.guild.voiceAdapterCreator,
+        adapterCreator: message.guild.voiceAdapterCreator
       });
 
-      await entersState(connection, VoiceConnectionStatus.Ready, 30000);
+      await entersState(connection, VoiceConnectionStatus.Ready, 20000);
 
       const stream = await play.stream(url);
 
@@ -56,19 +58,18 @@ client.on("messageCreate", async (message) => {
         inputType: stream.type
       });
 
-      const player = createAudioPlayer();
-
       player.play(resource);
       connection.subscribe(player);
 
       message.reply("🎵 Đang phát nhạc...");
 
-    } catch (error) {
-      console.log(error);
+    } catch (err) {
+      console.log(err);
       message.reply("❌ Lỗi khi phát nhạc");
     }
 
   }
+
 });
 
 client.login(process.env.TOKEN);
