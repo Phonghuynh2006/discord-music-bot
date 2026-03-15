@@ -4,10 +4,10 @@ const {
   createAudioPlayer,
   createAudioResource,
   getVoiceConnection,
-  AudioPlayerStatus
+  StreamType
 } = require("@discordjs/voice");
 
-const play = require("play-dl");
+const ytdl = require("ytdl-core");
 
 const client = new Client({
   intents: [
@@ -31,10 +31,12 @@ client.on("messageCreate", async (message) => {
   // PLAY
   if (message.content.startsWith("!play")) {
 
-    const url = message.content.split(" ").slice(1).join(" ");
+    const url = message.content.split(" ")[1];
 
-    if (!url) {
-      return message.reply("❌ Bạn phải gửi link YouTube");
+    if (!url) return message.reply("❌ Gửi link YouTube");
+
+    if (!ytdl.validateURL(url)) {
+      return message.reply("❌ Link YouTube không hợp lệ");
     }
 
     const voiceChannel = message.member.voice.channel;
@@ -51,12 +53,13 @@ client.on("messageCreate", async (message) => {
         adapterCreator: message.guild.voiceAdapterCreator
       });
 
-      const stream = await play.stream(url, {
-        quality: 2
+      const stream = ytdl(url, {
+        filter: "audioonly",
+        quality: "highestaudio"
       });
 
-      const resource = createAudioResource(stream.stream, {
-        inputType: stream.type
+      const resource = createAudioResource(stream, {
+        inputType: StreamType.Arbitrary
       });
 
       player.play(resource);
@@ -66,8 +69,8 @@ client.on("messageCreate", async (message) => {
 
     } catch (err) {
 
-      console.log("Lỗi phát nhạc:", err);
-      message.reply("❌ Không phát được link này");
+      console.log(err);
+      message.reply("❌ Không phát được");
 
     }
 
@@ -77,8 +80,7 @@ client.on("messageCreate", async (message) => {
   if (message.content === "!stop") {
 
     player.stop();
-
-    message.reply("⛔ Đã dừng nhạc");
+    message.reply("⛔ Đã dừng");
 
   }
 
@@ -87,9 +89,7 @@ client.on("messageCreate", async (message) => {
 
     const connection = getVoiceConnection(message.guild.id);
 
-    if (connection) {
-      connection.destroy();
-    }
+    if (connection) connection.destroy();
 
     message.reply("🚪 Bot đã rời voice");
 
