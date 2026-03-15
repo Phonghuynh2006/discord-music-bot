@@ -1,48 +1,46 @@
-const { Client, GatewayIntentBits } = require("discord.js");
-const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require("@discordjs/voice");
-const play = require("play-dl");
-
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
-});
-
-const player = createAudioPlayer();
-
-client.once("ready", () => {
-  console.log("Bot đã online!");
-});
-
 client.on("messageCreate", async (message) => {
 
-  if (message.content === "!radio") {
+  if (message.author.bot) return;
+
+  if (message.content.startsWith("!radio")) {
+
+    const args = message.content.split(" ");
+    const url = args[1];
 
     const voiceChannel = message.member.voice.channel;
 
-    if (!voiceChannel) return message.reply("Vào voice trước!");
+    if (!voiceChannel) {
+      return message.reply("❌ Bạn phải vào voice trước!");
+    }
 
-    const connection = joinVoiceChannel({
-      channelId: voiceChannel.id,
-      guildId: message.guild.id,
-      adapterCreator: message.guild.voiceAdapterCreator
-    });
+    if (!url) {
+      return message.reply("❌ Dán link YouTube sau lệnh!");
+    }
 
-    const stream = await play.stream("https://www.youtube.com/watch?v=jfKfPfyJRdk");
+    try {
 
-    const resource = createAudioResource(stream.stream, {
-      inputType: stream.type
-    });
+      const connection = joinVoiceChannel({
+        channelId: voiceChannel.id,
+        guildId: message.guild.id,
+        adapterCreator: message.guild.voiceAdapterCreator
+      });
 
-    player.play(resource);
-    connection.subscribe(player);
+      const stream = await play.stream(url);
 
-    message.reply("🎧 Đang phát radio YouTube 24/7");
+      const resource = createAudioResource(stream.stream, {
+        inputType: stream.type
+      });
+
+      player.play(resource);
+      connection.subscribe(player);
+
+      message.reply("🎵 Đang phát radio...");
+
+    } catch (err) {
+      console.log(err);
+      message.reply("❌ Không phát được link này");
+    }
+
   }
 
 });
-
-client.login(process.env.TOKEN);
