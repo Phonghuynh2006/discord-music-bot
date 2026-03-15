@@ -1,7 +1,13 @@
 const { Client, GatewayIntentBits } = require("discord.js");
-const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require("@discordjs/voice");
+const { 
+  joinVoiceChannel,
+  createAudioPlayer,
+  createAudioResource,
+  AudioPlayerStatus,
+  entersState,
+  VoiceConnectionStatus
+} = require("@discordjs/voice");
 const play = require("play-dl");
-const ffmpeg = require("ffmpeg-static");
 
 const client = new Client({
   intents: [
@@ -12,7 +18,7 @@ const client = new Client({
   ]
 });
 
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log("Bot đã online!");
 });
 
@@ -27,32 +33,41 @@ client.on("messageCreate", async (message) => {
     const voiceChannel = message.member.voice.channel;
 
     if (!voiceChannel) {
-      return message.reply("Bạn phải vào voice trước!");
+      return message.reply("❌ Bạn phải vào voice trước!");
     }
 
     if (!url) {
-      return message.reply("Bạn phải gửi link nhạc!");
+      return message.reply("❌ Bạn phải gửi link nhạc!");
     }
 
-    const connection = joinVoiceChannel({
-      channelId: voiceChannel.id,
-      guildId: message.guild.id,
-      adapterCreator: message.guild.voiceAdapterCreator
-    });
+    try {
 
-    const stream = await play.stream(url);
+      const connection = joinVoiceChannel({
+        channelId: voiceChannel.id,
+        guildId: message.guild.id,
+        adapterCreator: message.guild.voiceAdapterCreator,
+      });
 
-    const resource = createAudioResource(stream.stream, {
-      inputType: stream.type,
-      inlineVolume: true
-    });
+      await entersState(connection, VoiceConnectionStatus.Ready, 30000);
 
-    const player = createAudioPlayer();
+      const stream = await play.stream(url);
 
-    connection.subscribe(player);
-    player.play(resource);
+      const resource = createAudioResource(stream.stream, {
+        inputType: stream.type
+      });
 
-    message.reply("🎵 Đang phát nhạc...");
+      const player = createAudioPlayer();
+
+      player.play(resource);
+      connection.subscribe(player);
+
+      message.reply("🎵 Đang phát nhạc...");
+
+    } catch (error) {
+      console.log(error);
+      message.reply("❌ Lỗi khi phát nhạc");
+    }
+
   }
 });
 
