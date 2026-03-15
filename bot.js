@@ -67,12 +67,13 @@ client.on("messageCreate", async (message) => {
         selfDeaf: false
       });
 
-      await entersState(connection, VoiceConnectionStatus.Ready, 30000);
+      await entersState(connection, VoiceConnectionStatus.Ready, 60000);
 
       const stream = ytdl(url, {
-        quality: "highestaudio",
         filter: "audioonly",
-        highWaterMark: 1 << 25
+        quality: "highestaudio",
+        highWaterMark: 1 << 25,
+        liveBuffer: 4900
       });
 
       const resource = createAudioResource(stream, {
