@@ -11,6 +11,7 @@ const {
 
 const ytdl = require("@distube/ytdl-core");
 
+// Discord client
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -20,7 +21,7 @@ const client = new Client({
   ]
 });
 
-// Player ổn định hơn
+// Audio player
 const player = createAudioPlayer({
   behaviors: {
     noSubscriber: NoSubscriberBehavior.Play
@@ -31,6 +32,7 @@ client.once("clientReady", () => {
   console.log(`✅ Bot online: ${client.user.tag}`);
 });
 
+// Player events
 player.on("error", error => {
   console.error("❌ Player error:", error.message);
 });
@@ -39,9 +41,11 @@ player.on("stateChange", (oldState, newState) => {
   console.log(`Player: ${oldState.status} -> ${newState.status}`);
 });
 
+// Message handler
 client.on("messageCreate", async (message) => {
   if (message.author.bot || !message.guild) return;
 
+  // PLAY COMMAND
   if (message.content.startsWith("!play")) {
 
     const args = message.content.split(" ");
@@ -66,17 +70,20 @@ client.on("messageCreate", async (message) => {
         selfDeaf: false
       });
 
-      // Chờ kết nối voice ổn định
+      // Chờ kết nối voice
       await entersState(connection, VoiceConnectionStatus.Ready, 30000);
 
+      connection.on("stateChange", (oldState, newState) => {
+        console.log(`Voice: ${oldState.status} -> ${newState.status}`);
+      });
+
       const stream = ytdl(url, {
-        quality: "highestaudio",
         filter: "audioonly",
-        highWaterMark: 1 << 25
+        quality: "highestaudio",
+        highWaterMark: 1 << 26
       });
 
       const resource = createAudioResource(stream, {
-        inputType: "arbitrary",
         inlineVolume: true
       });
 
@@ -91,11 +98,13 @@ client.on("messageCreate", async (message) => {
     }
   }
 
+  // STOP COMMAND
   if (message.content === "!stop") {
     player.stop();
     message.reply("⛔ Đã dừng nhạc!");
   }
 
+  // LEAVE COMMAND
   if (message.content === "!leave") {
     const connection = getVoiceConnection(message.guild.id);
     if (connection) connection.destroy();
@@ -103,4 +112,13 @@ client.on("messageCreate", async (message) => {
   }
 });
 
+// Login bot
 client.login(process.env.TOKEN);
+
+// Web server nhỏ cho Render
+const http = require("http");
+
+http.createServer((req, res) => {
+  res.write("Bot is running");
+  res.end();
+}).listen(3000);
