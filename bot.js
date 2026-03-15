@@ -2,6 +2,9 @@ const { Client, GatewayIntentBits } = require("discord.js");
 const { Manager } = require("erela.js");
 const http = require("http");
 
+process.on("uncaughtException", console.error);
+process.on("unhandledRejection", console.error);
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -15,9 +18,9 @@ const manager = new Manager({
   nodes: [
     {
       host: "lavalink-production-4fe4.up.railway.app",
-      port: 443,
+      port: 80, // sửa từ 443
       password: "youshallnotpass",
-      secure: true
+      secure: false // sửa từ true
     }
   ],
   send(id, payload) {
@@ -32,6 +35,14 @@ client.once("clientReady", () => {
 });
 
 client.on("raw", (d) => manager.updateVoiceState(d));
+
+manager.on("nodeConnect", () => {
+  console.log("✅ Lavalink connected");
+});
+
+manager.on("nodeError", (node, error) => {
+  console.log("❌ Lavalink error:", error.message);
+});
 
 client.on("messageCreate", async (message) => {
 
@@ -50,27 +61,34 @@ client.on("messageCreate", async (message) => {
       return message.reply("❌ Bạn phải vào voice trước!");
     }
 
-    const player = manager.create({
-      guild: message.guild.id,
-      voiceChannel: voiceChannel.id,
-      textChannel: message.channel.id
-    });
+    try {
 
-    player.connect();
+      const player = manager.create({
+        guild: message.guild.id,
+        voiceChannel: voiceChannel.id,
+        textChannel: message.channel.id
+      });
 
-    const res = await manager.search(query, message.author);
+      player.connect();
 
-    if (res.tracks.length === 0) {
-      return message.reply("❌ Không tìm thấy bài.");
+      const res = await manager.search(query, message.author);
+
+      if (!res.tracks.length) {
+        return message.reply("❌ Không tìm thấy bài.");
+      }
+
+      player.queue.add(res.tracks[0]);
+
+      if (!player.playing && !player.paused) {
+        player.play();
+      }
+
+      message.reply("🎵 Đang phát nhạc...");
+
+    } catch (err) {
+      console.error(err);
+      message.reply("❌ Không phát được nhạc.");
     }
-
-    player.queue.add(res.tracks[0]);
-
-    if (!player.playing && !player.paused) {
-      player.play();
-    }
-
-    message.reply("🎵 Đang phát nhạc...");
   }
 
   if (command === "!stop") {
@@ -79,9 +97,9 @@ client.on("messageCreate", async (message) => {
 
     if (player) {
       player.destroy();
+      message.reply("⛔ Đã dừng nhạc");
     }
 
-    message.reply("⛔ Đã dừng nhạc");
   }
 
 });
