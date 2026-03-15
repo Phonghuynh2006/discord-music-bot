@@ -17,10 +17,10 @@ const client = new Client({
 const manager = new Manager({
   nodes: [
     {
-      host: "lavalink-production-4fe4.up.railway.app",
-      port: 41732, // sửa từ 443
+      host: "shuttle.proxy.rlwy.net",
+      port: 26907,
       password: "youshallnotpass",
-      secure: false // sửa từ true
+      secure: false
     }
   ],
   send(id, payload) {
