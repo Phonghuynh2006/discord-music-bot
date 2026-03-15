@@ -19,11 +19,6 @@ const client = new Client({
   ]
 });
 
-// Cookie YouTube
-const YOUTUBE_COOKIES = [
-  {"domain":".youtube.com","expirationDate":1806573672,"hostOnly":false,"httpOnly":false,"name":"__Secure-1PAPISID","path":"/","sameSite":"unspecified","secure":true,"session":false,"storeId":"0","value":"vzBfi_Iw-GoSD_-J/AWsby0PmUuOMtIijH"}
-];
-
 const player = createAudioPlayer();
 
 client.once("clientReady", () => {
@@ -50,24 +45,24 @@ client.on("messageCreate", async (message) => {
     }
 
     const voiceChannel = message.member.voice.channel;
-    if (!voiceChannel) return message.reply("❌ Bạn phải vào phòng voice trước!");
+    if (!voiceChannel) {
+      return message.reply("❌ Bạn phải vào phòng voice trước!");
+    }
 
     try {
+
       const connection = joinVoiceChannel({
         channelId: voiceChannel.id,
         guildId: message.guild.id,
         adapterCreator: message.guild.voiceAdapterCreator
       });
 
-      await entersState(connection, VoiceConnectionStatus.Ready, 20000);
-
-      const agent = ytdl.createAgent(YOUTUBE_COOKIES);
+      await entersState(connection, VoiceConnectionStatus.Ready, 30000);
 
       const stream = ytdl(url, {
         quality: "highestaudio",
         filter: "audioonly",
-        highWaterMark: 1 << 25,
-        agent: agent
+        highWaterMark: 1 << 25
       });
 
       const resource = createAudioResource(stream, {
