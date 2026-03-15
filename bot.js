@@ -1,17 +1,12 @@
 const { Client, GatewayIntentBits } = require("discord.js");
 const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require("@discordjs/voice");
-const ytdl = require("ytdl-core");
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates
   ]
 });
-
-const player = createAudioPlayer();
 
 client.once("clientReady", () => {
   console.log("Bot đã online!");
@@ -19,44 +14,30 @@ client.once("clientReady", () => {
 
 client.on("messageCreate", async (message) => {
 
-  if (message.author.bot) return;
-
-  if (message.content.startsWith("!play")) {
-
-    const args = message.content.split(" ");
-    const url = args[1];
+  if (message.content === "!chill") {
 
     const voiceChannel = message.member.voice.channel;
 
     if (!voiceChannel) {
-      return message.reply("❌ Bạn phải vào voice trước!");
+      return message.reply("Vào voice trước!");
     }
 
-    try {
+    const connection = joinVoiceChannel({
+      channelId: voiceChannel.id,
+      guildId: message.guild.id,
+      adapterCreator: message.guild.voiceAdapterCreator
+    });
 
-      const connection = joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: message.guild.id,
-        adapterCreator: message.guild.voiceAdapterCreator
-      });
+    const player = createAudioPlayer();
 
-      const stream = ytdl(url, {
-        filter: "audioonly",
-        quality: "highestaudio"
-      });
+    const resource = createAudioResource(
+      "https://stream.zeno.fm/f3wvbbqmdg8uv"
+    );
 
-      const resource = createAudioResource(stream);
+    player.play(resource);
+    connection.subscribe(player);
 
-      player.play(resource);
-      connection.subscribe(player);
-
-      message.reply("🎵 Đang phát nhạc...");
-
-    } catch (err) {
-      console.log(err);
-      message.reply("❌ Không phát được nhạc");
-    }
-
+    message.reply("🎧 Đang phát nhạc chill 24/7");
   }
 
 });
