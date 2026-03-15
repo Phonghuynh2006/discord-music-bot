@@ -20,7 +20,7 @@ const manager = new Manager({
       host: "shuttle.proxy.rlwy.net",
       port: 26907,
       password: "youshallnotpass",
-      secure: false
+      secure: true
     }
   ],
   clientId: process.env.CLIENT_ID,
