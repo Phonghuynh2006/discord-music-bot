@@ -1,87 +1,46 @@
-const { Client, GatewayIntentBits } = require("discord.js");
-const {
-  joinVoiceChannel,
-  createAudioPlayer,
-  createAudioResource,
-  getVoiceConnection
-} = require("@discordjs/voice");
+if (message.content.startsWith("!play")) {
 
-const play = require("play-dl");
+  const args = message.content.trim().split(/\s+/);
+  const url = args[1];
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildVoiceStates
-  ]
-});
+  if (!url) {
+    return message.reply("❌ Bạn phải gửi link YouTube");
+  }
 
-const player = createAudioPlayer();
+  if (!play.yt_validate(url)) {
+    return message.reply("❌ Link YouTube không hợp lệ");
+  }
 
-client.once("clientReady", () => {
-  console.log("✅ Bot đã online!");
-});
+  const voiceChannel = message.member.voice.channel;
 
-client.on("messageCreate", async (message) => {
+  if (!voiceChannel) {
+    return message.reply("❌ Bạn phải vào voice trước");
+  }
 
-  if (message.author.bot) return;
+  try {
 
-  if (message.content.startsWith("!play")) {
+    const connection = joinVoiceChannel({
+      channelId: voiceChannel.id,
+      guildId: message.guild.id,
+      adapterCreator: message.guild.voiceAdapterCreator
+    });
 
-    const url = message.content.split(" ").slice(1).join(" ");
+    const stream = await play.stream(url);
 
-    if (!url) return message.reply("❌ Gửi link YouTube");
+    const resource = createAudioResource(stream.stream, {
+      inputType: stream.type
+    });
 
-    const voiceChannel = message.member.voice.channel;
+    player.play(resource);
+    connection.subscribe(player);
 
-    if (!voiceChannel) {
-      return message.reply("❌ Bạn phải vào voice trước");
-    }
+    message.reply("🎵 Đang phát nhạc");
 
-    try {
+  } catch (err) {
 
-      const connection = joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: message.guild.id,
-        adapterCreator: message.guild.voiceAdapterCreator
-      });
-
-      const stream = await play.stream(url);
-
-      const resource = createAudioResource(stream.stream, {
-        inputType: stream.type
-      });
-
-      player.play(resource);
-      connection.subscribe(player);
-
-      message.reply("🎵 Đang phát...");
-
-    } catch (err) {
-
-      console.log(err);
-      message.reply("❌ Không phát được link");
-
-    }
+    console.log("Lỗi phát nhạc:", err);
+    message.reply("❌ Không phát được link");
 
   }
 
-  if (message.content === "!stop") {
-    player.stop();
-    message.reply("⛔ Đã dừng");
-  }
-
-  if (message.content === "!leave") {
-
-    const connection = getVoiceConnection(message.guild.id);
-
-    if (connection) connection.destroy();
-
-    message.reply("🚪 Bot đã rời voice");
-
-  }
-
-});
-
-client.login(process.env.TOKEN);
+}
