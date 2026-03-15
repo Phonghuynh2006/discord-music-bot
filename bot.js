@@ -18,7 +18,7 @@ const manager = new Manager({
   nodes: [
     {
       host: "lavalink-production-4fe4.up.railway.app",
-      port: 80, // sửa từ 443
+      port: 8080, // sửa từ 443
       password: "youshallnotpass",
       secure: false // sửa từ true
     }
