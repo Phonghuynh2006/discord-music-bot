@@ -5,7 +5,8 @@ const {
   createAudioResource,
   getVoiceConnection,
   entersState,
-  VoiceConnectionStatus
+  VoiceConnectionStatus,
+  NoSubscriberBehavior
 } = require("@discordjs/voice");
 
 const ytdl = require("@distube/ytdl-core");
@@ -19,7 +20,12 @@ const client = new Client({
   ]
 });
 
-const player = createAudioPlayer();
+// Player ổn định hơn
+const player = createAudioPlayer({
+  behaviors: {
+    noSubscriber: NoSubscriberBehavior.Play
+  }
+});
 
 client.once("clientReady", () => {
   console.log(`✅ Bot online: ${client.user.tag}`);
@@ -37,6 +43,7 @@ client.on("messageCreate", async (message) => {
   if (message.author.bot || !message.guild) return;
 
   if (message.content.startsWith("!play")) {
+
     const args = message.content.split(" ");
     const url = args[1];
 
@@ -45,6 +52,7 @@ client.on("messageCreate", async (message) => {
     }
 
     const voiceChannel = message.member.voice.channel;
+
     if (!voiceChannel) {
       return message.reply("❌ Bạn phải vào phòng voice trước!");
     }
@@ -54,9 +62,11 @@ client.on("messageCreate", async (message) => {
       const connection = joinVoiceChannel({
         channelId: voiceChannel.id,
         guildId: message.guild.id,
-        adapterCreator: message.guild.voiceAdapterCreator
+        adapterCreator: message.guild.voiceAdapterCreator,
+        selfDeaf: false
       });
 
+      // Chờ kết nối voice ổn định
       await entersState(connection, VoiceConnectionStatus.Ready, 30000);
 
       const stream = ytdl(url, {
@@ -66,6 +76,7 @@ client.on("messageCreate", async (message) => {
       });
 
       const resource = createAudioResource(stream, {
+        inputType: "arbitrary",
         inlineVolume: true
       });
 
@@ -75,7 +86,7 @@ client.on("messageCreate", async (message) => {
       message.reply("🎵 Đang phát nhạc...");
 
     } catch (err) {
-      console.error(err);
+      console.error("VOICE ERROR:", err);
       message.reply("❌ Không phát được audio từ video!");
     }
   }
