@@ -9,7 +9,7 @@ const {
   NoSubscriberBehavior
 } = require("@discordjs/voice");
 
-const ytdl = require("@distube/ytdl-core");
+const play = require("play-dl");
 const http = require("http");
 
 const client = new Client({
@@ -27,27 +27,30 @@ const player = createAudioPlayer({
   }
 });
 
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log(`✅ Bot online: ${client.user.tag}`);
 });
 
 player.on("error", error => {
-  console.error("❌ Player error:", error.message);
+  console.error("Player error:", error.message);
 });
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot || !message.guild) return;
 
-  if (message.content.startsWith("!play")) {
+  const args = message.content.split(" ");
+  const command = args[0];
 
-    const args = message.content.split(" ");
+  if (command === "!play") {
+
     const url = args[1];
 
-    if (!url || !ytdl.validateURL(url)) {
-      return message.reply("❌ Link YouTube không hợp lệ!");
+    if (!url) {
+      return message.reply("❌ Vui lòng nhập link YouTube.");
     }
 
     const voiceChannel = message.member.voice.channel;
+
     if (!voiceChannel) {
       return message.reply("❌ Bạn phải vào phòng voice trước!");
     }
@@ -61,28 +64,13 @@ client.on("messageCreate", async (message) => {
         selfDeaf: true
       });
 
-      // reconnect nếu voice bị rớt
-      connection.on("stateChange", (oldState, newState) => {
-        if (newState.status === "disconnected") {
-          try {
-            connection.rejoin();
-            console.log("🔄 Reconnecting voice...");
-          } catch {
-            connection.destroy();
-          }
-        }
-      });
-
       await entersState(connection, VoiceConnectionStatus.Ready, 60000);
 
-      const stream = ytdl(url, {
-        filter: "audioonly",
-        quality: "highestaudio",
-        highWaterMark: 1 << 25,
-        dlChunkSize: 0
-      });
+      const stream = await play.stream(url);
 
-      const resource = createAudioResource(stream);
+      const resource = createAudioResource(stream.stream, {
+        inputType: stream.type
+      });
 
       player.play(resource);
       connection.subscribe(player);
@@ -90,27 +78,35 @@ client.on("messageCreate", async (message) => {
       message.reply("🎵 Đang phát nhạc...");
 
     } catch (err) {
+
       console.error("VOICE ERROR:", err);
-      message.reply("❌ Không phát được audio!");
+      message.reply("❌ Không phát được nhạc.");
+
     }
   }
 
-  if (message.content === "!stop") {
+  if (command === "!stop") {
     player.stop();
     message.reply("⛔ Đã dừng nhạc!");
   }
 
-  if (message.content === "!leave") {
+  if (command === "!leave") {
+
     const connection = getVoiceConnection(message.guild.id);
-    if (connection) connection.destroy();
-    message.reply("🚪 Bot đã rời phòng voice!");
+
+    if (connection) {
+      connection.destroy();
+    }
+
+    message.reply("🚪 Bot đã rời phòng voice.");
   }
 });
 
 client.login(process.env.TOKEN);
 
 
-// ===== Web server để Render detect port =====
+
+// Web server để Render detect port
 const PORT = process.env.PORT || 10000;
 
 http.createServer((req, res) => {
