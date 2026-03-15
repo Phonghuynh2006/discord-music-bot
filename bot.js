@@ -27,48 +27,51 @@ client.on("messageCreate", async (message) => {
 
   if (message.author.bot) return;
 
-  if (message.content.startsWith("!play")) {
+if (message.content.startsWith("!play")) {
 
-    const args = message.content.trim().split(/\s+/);
-    const url = args[1];
+  const match = message.content.match(/https?:\/\/\S+/);
 
-    if (!url) {
-      return message.reply("❌ Bạn phải gửi link YouTube");
-    }
+  if (!match) {
+    return message.reply("❌ Bạn phải gửi link YouTube");
+  }
 
-    const voiceChannel = message.member.voice.channel;
+  const url = match[0];
 
-    if (!voiceChannel) {
-      return message.reply("❌ Bạn phải vào voice trước");
-    }
+  const voiceChannel = message.member.voice.channel;
 
-    try {
+  if (!voiceChannel) {
+    return message.reply("❌ Bạn phải vào voice trước");
+  }
 
-      const connection = joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: message.guild.id,
-        adapterCreator: message.guild.voiceAdapterCreator
-      });
+  try {
 
-      const stream = await play.stream(url);
+    const connection = joinVoiceChannel({
+      channelId: voiceChannel.id,
+      guildId: message.guild.id,
+      adapterCreator: message.guild.voiceAdapterCreator
+    });
 
-      const resource = createAudioResource(stream.stream, {
-        inputType: stream.type
-      });
+    console.log("URL nhận được:", url);
 
-      player.play(resource);
-      connection.subscribe(player);
+    const stream = await play.stream(url);
 
-      message.reply("🎵 Đang phát nhạc");
+    const resource = createAudioResource(stream.stream, {
+      inputType: stream.type
+    });
 
-    } catch (err) {
+    player.play(resource);
+    connection.subscribe(player);
 
-      console.log(err);
-      message.reply("❌ Không phát được link");
+    message.reply("🎵 Đang phát nhạc");
 
-    }
+  } catch (err) {
+
+    console.log("Lỗi phát nhạc:", err);
+    message.reply("❌ Không phát được link");
 
   }
+
+}
 
   if (message.content === "!stop") {
 
