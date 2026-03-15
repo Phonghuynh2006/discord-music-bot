@@ -1,15 +1,5 @@
 const { Client, GatewayIntentBits } = require("discord.js");
-const {
-  joinVoiceChannel,
-  createAudioPlayer,
-  createAudioResource,
-  getVoiceConnection,
-  entersState,
-  VoiceConnectionStatus,
-  NoSubscriberBehavior
-} = require("@discordjs/voice");
-
-const play = require("play-dl");
+const { Manager } = require("erela.js");
 const http = require("http");
 
 const client = new Client({
@@ -21,97 +11,89 @@ const client = new Client({
   ]
 });
 
-const player = createAudioPlayer({
-  behaviors: {
-    noSubscriber: NoSubscriberBehavior.Play
+const manager = new Manager({
+  nodes: [
+    {
+      host: "lavalink-production-4fe4.up.railway.app",
+      port: 443,
+      password: "youshallnotpass",
+      secure: true
+    }
+  ],
+  send(id, payload) {
+    const guild = client.guilds.cache.get(id);
+    if (guild) guild.shard.send(payload);
   }
 });
 
 client.once("clientReady", () => {
   console.log(`✅ Bot online: ${client.user.tag}`);
+  manager.init(client.user.id);
 });
 
-player.on("error", error => {
-  console.error("Player error:", error.message);
-});
+client.on("raw", (d) => manager.updateVoiceState(d));
 
 client.on("messageCreate", async (message) => {
-  if (message.author.bot || !message.guild) return;
+
+  if (!message.guild || message.author.bot) return;
 
   const args = message.content.split(" ");
-  const command = args[0];
+  const command = args.shift();
 
   if (command === "!play") {
 
-    const url = args[1];
-
-    if (!url) {
-      return message.reply("❌ Vui lòng nhập link YouTube.");
-    }
+    const query = args.join(" ");
 
     const voiceChannel = message.member.voice.channel;
 
     if (!voiceChannel) {
-      return message.reply("❌ Bạn phải vào phòng voice trước!");
+      return message.reply("❌ Bạn phải vào voice trước!");
     }
 
-    try {
+    const player = manager.create({
+      guild: message.guild.id,
+      voiceChannel: voiceChannel.id,
+      textChannel: message.channel.id
+    });
 
-      const connection = joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: message.guild.id,
-        adapterCreator: message.guild.voiceAdapterCreator,
-        selfDeaf: true
-      });
+    player.connect();
 
-      await entersState(connection, VoiceConnectionStatus.Ready, 60000);
+    const res = await manager.search(query, message.author);
 
-      const stream = await play.stream(url);
-
-      const resource = createAudioResource(stream.stream, {
-        inputType: stream.type
-      });
-
-      player.play(resource);
-      connection.subscribe(player);
-
-      message.reply("🎵 Đang phát nhạc...");
-
-    } catch (err) {
-
-      console.error("VOICE ERROR:", err);
-      message.reply("❌ Không phát được nhạc.");
-
+    if (res.tracks.length === 0) {
+      return message.reply("❌ Không tìm thấy bài.");
     }
+
+    player.queue.add(res.tracks[0]);
+
+    if (!player.playing && !player.paused) {
+      player.play();
+    }
+
+    message.reply("🎵 Đang phát nhạc...");
   }
 
   if (command === "!stop") {
-    player.stop();
-    message.reply("⛔ Đã dừng nhạc!");
-  }
 
-  if (command === "!leave") {
+    const player = manager.players.get(message.guild.id);
 
-    const connection = getVoiceConnection(message.guild.id);
-
-    if (connection) {
-      connection.destroy();
+    if (player) {
+      player.destroy();
     }
 
-    message.reply("🚪 Bot đã rời phòng voice.");
+    message.reply("⛔ Đã dừng nhạc");
   }
+
 });
 
 client.login(process.env.TOKEN);
 
-
-
-// Web server để Render detect port
+// Web server cho Render
 const PORT = process.env.PORT || 10000;
 
 http.createServer((req, res) => {
   res.writeHead(200);
-  res.end("Bot is running");
-}).listen(PORT, "0.0.0.0", () => {
+  res.end("Bot running");
+}).listen(PORT, () => {
   console.log("🌐 Web server running on port " + PORT);
 });
