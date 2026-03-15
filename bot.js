@@ -3,7 +3,8 @@ const {
   joinVoiceChannel,
   createAudioPlayer,
   createAudioResource,
-  getVoiceConnection
+  getVoiceConnection,
+  AudioPlayerStatus
 } = require("@discordjs/voice");
 
 const play = require("play-dl");
@@ -27,14 +28,13 @@ client.on("messageCreate", async (message) => {
 
   if (message.author.bot) return;
 
-  // PLAY YOUTUBE
+  // PLAY
   if (message.content.startsWith("!play")) {
 
-    const args = message.content.split(" ");
-    const url = args[1];
+    const url = message.content.split(" ").slice(1).join(" ");
 
     if (!url) {
-      return message.reply("❌ Bạn phải dán link YouTube");
+      return message.reply("❌ Bạn phải gửi link YouTube");
     }
 
     const voiceChannel = message.member.voice.channel;
@@ -51,7 +51,9 @@ client.on("messageCreate", async (message) => {
         adapterCreator: message.guild.voiceAdapterCreator
       });
 
-      const stream = await play.stream(url);
+      const stream = await play.stream(url, {
+        quality: 2
+      });
 
       const resource = createAudioResource(stream.stream, {
         inputType: stream.type
@@ -63,8 +65,10 @@ client.on("messageCreate", async (message) => {
       message.reply("🎵 Đang phát nhạc...");
 
     } catch (err) {
-      console.log(err);
+
+      console.log("Lỗi phát nhạc:", err);
       message.reply("❌ Không phát được link này");
+
     }
 
   }
