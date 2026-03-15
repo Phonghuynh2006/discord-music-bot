@@ -17,13 +17,12 @@ const client = new Client({
 const manager = new Manager({
   nodes: [
     {
-      host: "shuttle.proxy.rlwy.net",
-      port: 26907,
+      host: "lavalink-production-4fe4.up.railway.app",
+      port: 443,
       password: "youshallnotpass",
       secure: true
     }
   ],
-  clientId: process.env.CLIENT_ID,
   send(id, payload) {
     const guild = client.guilds.cache.get(id);
     if (guild) guild.shard.send(payload);
