@@ -29,13 +29,15 @@ client.on("messageCreate", async (message) => {
 
 if (message.content.startsWith("!play")) {
 
-  const match = message.content.match(/https?:\/\/\S+/);
+  const args = message.content.split(" ");
 
-  if (!match) {
+  if (args.length < 2) {
     return message.reply("❌ Bạn phải gửi link YouTube");
   }
 
-  const url = match[0];
+  const url = args[1];
+
+  console.log("Link nhận được:", url); // debug
 
   const voiceChannel = message.member.voice.channel;
 
@@ -50,8 +52,6 @@ if (message.content.startsWith("!play")) {
       guildId: message.guild.id,
       adapterCreator: message.guild.voiceAdapterCreator
     });
-
-    console.log("URL nhận được:", url);
 
     const stream = await play.stream(url);
 
