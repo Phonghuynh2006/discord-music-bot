@@ -1,6 +1,7 @@
 const { Client, GatewayIntentBits } = require("discord.js");
 const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require("@discordjs/voice");
 const play = require("play-dl");
+const ffmpeg = require("ffmpeg-static");
 
 const client = new Client({
   intents: [
@@ -42,7 +43,8 @@ client.on("messageCreate", async (message) => {
     const stream = await play.stream(url);
 
     const resource = createAudioResource(stream.stream, {
-      inputType: stream.type
+      inputType: stream.type,
+      inlineVolume: true
     });
 
     const player = createAudioPlayer();
