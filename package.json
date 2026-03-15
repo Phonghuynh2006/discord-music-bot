@@ -12,6 +12,7 @@
     "discord.js": "^14.14.1",
     "@discordjs/voice": "^0.16.0",
     "@distube/ytdl-core": "latest",
+    "play-dl": "latest",
     "ffmpeg-static": "^5.2.0"
   }
 }
