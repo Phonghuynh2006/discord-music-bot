@@ -3,11 +3,10 @@ const {
   joinVoiceChannel,
   createAudioPlayer,
   createAudioResource,
-  getVoiceConnection,
-  StreamType
+  getVoiceConnection
 } = require("@discordjs/voice");
 
-const ytdl = require("ytdl-core");
+const play = require("play-dl");
 
 const client = new Client({
   intents: [
@@ -20,7 +19,7 @@ const client = new Client({
 
 const player = createAudioPlayer();
 
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log("✅ Bot đã online!");
 });
 
@@ -28,16 +27,11 @@ client.on("messageCreate", async (message) => {
 
   if (message.author.bot) return;
 
-  // PLAY
   if (message.content.startsWith("!play")) {
 
-    const url = message.content.split(" ")[1];
+    const url = message.content.split(" ").slice(1).join(" ");
 
     if (!url) return message.reply("❌ Gửi link YouTube");
-
-    if (!ytdl.validateURL(url)) {
-      return message.reply("❌ Link YouTube không hợp lệ");
-    }
 
     const voiceChannel = message.member.voice.channel;
 
@@ -53,38 +47,31 @@ client.on("messageCreate", async (message) => {
         adapterCreator: message.guild.voiceAdapterCreator
       });
 
-      const stream = ytdl(url, {
-        filter: "audioonly",
-        quality: "highestaudio"
-      });
+      const stream = await play.stream(url);
 
-      const resource = createAudioResource(stream, {
-        inputType: StreamType.Arbitrary
+      const resource = createAudioResource(stream.stream, {
+        inputType: stream.type
       });
 
       player.play(resource);
       connection.subscribe(player);
 
-      message.reply("🎵 Đang phát nhạc...");
+      message.reply("🎵 Đang phát...");
 
     } catch (err) {
 
       console.log(err);
-      message.reply("❌ Không phát được");
+      message.reply("❌ Không phát được link");
 
     }
 
   }
 
-  // STOP
   if (message.content === "!stop") {
-
     player.stop();
     message.reply("⛔ Đã dừng");
-
   }
 
-  // LEAVE
   if (message.content === "!leave") {
 
     const connection = getVoiceConnection(message.guild.id);
