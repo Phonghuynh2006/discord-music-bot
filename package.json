@@ -13,6 +13,8 @@
     "@discordjs/voice": "^0.16.0",
     "@discordjs/opus": "^0.9.0",
     "@distube/ytdl-core": "latest",
-    "ffmpeg-static": "^5.2.0"
+    "ffmpeg-static": "^5.2.0",
+    "libsodium-wrappers": "^0.7.13",
+    "play-dl": "^1.9.7"
   }
 }
