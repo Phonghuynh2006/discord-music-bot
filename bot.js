@@ -23,6 +23,7 @@ const manager = new Manager({
       secure: false
     }
   ],
+  clientId: process.env.CLIENT_ID,
   send(id, payload) {
     const guild = client.guilds.cache.get(id);
     if (guild) guild.shard.send(payload);
