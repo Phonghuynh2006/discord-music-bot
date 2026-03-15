@@ -53,8 +53,9 @@ if (message.content.startsWith("!play")) {
       adapterCreator: message.guild.voiceAdapterCreator
     });
 
-    const stream = await play.stream(url);
-
+    const info = await play.video_info(url);
+    const stream = await play.stream(info.video_details.url);
+    
     const resource = createAudioResource(stream.stream, {
       inputType: stream.type
     });
