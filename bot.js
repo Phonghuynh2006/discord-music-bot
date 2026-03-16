@@ -2,7 +2,7 @@ const ffmpeg = require("ffmpeg-static");
 process.env.FFMPEG_PATH = ffmpeg;
 
 const { Client, GatewayIntentBits } = require("discord.js");
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require("@discordjs/voice");
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, StreamType } = require("@discordjs/voice");
 const http = require("http");
 
 const TOKEN = process.env.TOKEN;
@@ -45,6 +45,7 @@ client.on("messageCreate", async (message) => {
     player = createAudioPlayer();
 
     const resource = createAudioResource(STREAM_URL, {
+      inputType: StreamType.Arbitrary,
       inlineVolume: true
     });
 
@@ -52,8 +53,11 @@ client.on("messageCreate", async (message) => {
 
     connection.subscribe(player);
 
+    player.on("error", console.error);
+
     player.on(AudioPlayerStatus.Idle, () => {
       const newResource = createAudioResource(STREAM_URL, {
+        inputType: StreamType.Arbitrary,
         inlineVolume: true
       });
       player.play(newResource);
