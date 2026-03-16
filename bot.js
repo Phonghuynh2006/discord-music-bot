@@ -2,8 +2,9 @@ const { Client, GatewayIntentBits } = require("discord.js");
 const { Manager } = require("erela.js");
 const http = require("http");
 
-process.on("uncaughtException", console.error);
-process.on("unhandledRejection", console.error);
+const TOKEN = process.env.TOKEN;
+
+const STREAM_URL = "https://drive.google.com/uc?export=download&id=1RbphI_EA_gREPo0fLsXS8jG7Mu8aEVLo";
 
 const client = new Client({
   intents: [
@@ -29,7 +30,7 @@ const manager = new Manager({
   }
 });
 
-client.once("clientReady", () => {
+client.once("ready", () => {
   console.log(`✅ Bot online: ${client.user.tag}`);
   manager.init(client.user.id);
 });
@@ -44,54 +45,50 @@ manager.on("nodeError", (node, error) => {
   console.log("❌ Lavalink error:", error.message);
 });
 
+manager.on("trackEnd", (player, track) => {
+  player.queue.add(track);
+  player.play();
+});
+
 client.on("messageCreate", async (message) => {
 
   if (!message.guild || message.author.bot) return;
 
   const args = message.content.split(" ");
-  const command = args.shift();
+  const cmd = args.shift();
 
-  if (command === "!play") {
+  if (cmd === "!play") {
 
-    const query = args.join(" ");
+    const voice = message.member.voice.channel;
 
-    const voiceChannel = message.member.voice.channel;
-
-    if (!voiceChannel) {
+    if (!voice) {
       return message.reply("❌ Bạn phải vào voice trước!");
     }
 
-    try {
+    const player = manager.create({
+      guild: message.guild.id,
+      voiceChannel: voice.id,
+      textChannel: message.channel.id
+    });
 
-      const player = manager.create({
-        guild: message.guild.id,
-        voiceChannel: voiceChannel.id,
-        textChannel: message.channel.id
-      });
+    player.connect();
 
-      player.connect();
+    const res = await manager.search(STREAM_URL, message.author);
 
-      const res = await manager.search(query, message.author);
-
-      if (!res.tracks.length) {
-        return message.reply("❌ Không tìm thấy bài.");
-      }
-
-      player.queue.add(res.tracks[0]);
-
-      if (!player.playing && !player.paused) {
-        player.play();
-      }
-
-      message.reply("🎵 Đang phát nhạc...");
-
-    } catch (err) {
-      console.error(err);
-      message.reply("❌ Không phát được nhạc.");
+    if (!res.tracks.length) {
+      return message.reply("❌ Không phát được link MP3.");
     }
+
+    player.queue.add(res.tracks[0]);
+
+    if (!player.playing) {
+      player.play();
+    }
+
+    message.reply("🎵 Đang phát nhạc (loop vô hạn)");
   }
 
-  if (command === "!stop") {
+  if (cmd === "!stop") {
 
     const player = manager.players.get(message.guild.id);
 
@@ -104,14 +101,14 @@ client.on("messageCreate", async (message) => {
 
 });
 
-client.login(process.env.TOKEN);
+client.login(TOKEN);
 
-// Web server cho Render
+
 const PORT = process.env.PORT || 10000;
 
 http.createServer((req, res) => {
   res.writeHead(200);
   res.end("Bot running");
 }).listen(PORT, () => {
-  console.log("🌐 Web server running on port " + PORT);
+  console.log("🌐 Web server running " + PORT);
 });
