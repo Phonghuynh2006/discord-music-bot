@@ -7,7 +7,7 @@ const http = require("http");
 
 const TOKEN = process.env.TOKEN;
 
-const STREAM_URL = "https://www.dropbox.com/scl/fi/gcxxdr46j0349wk2wafmt/NH-C-CHILL.mp3?rlkey=2zgdqfu4rc6lpyvf9zrwajatp&st=vxyplwf9&dl=0";
+const STREAM_URL = "https://dl.dropboxusercontent.com/scl/fi/gcxxdr46j0349wk2wafmt/NH-C-CHILL.mp3";
 
 const client = new Client({
   intents: [
@@ -44,14 +44,18 @@ client.on("messageCreate", async (message) => {
 
     player = createAudioPlayer();
 
-    const resource = createAudioResource(STREAM_URL);
+    const resource = createAudioResource(STREAM_URL, {
+      inlineVolume: true
+    });
 
     player.play(resource);
 
     connection.subscribe(player);
 
     player.on(AudioPlayerStatus.Idle, () => {
-      const newResource = createAudioResource(STREAM_URL);
+      const newResource = createAudioResource(STREAM_URL, {
+        inlineVolume: true
+      });
       player.play(newResource);
     });
 
