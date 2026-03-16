@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits } = require("discord.js");
-const { Manager } = require("erela.js");
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require("@discordjs/voice");
 const http = require("http");
 
 const TOKEN = process.env.TOKEN;
@@ -15,85 +15,52 @@ const client = new Client({
   ]
 });
 
-const manager = new Manager({
-  nodes: [
-    {
-      host: "lavalink-production-4fe4.up.railway.app",
-      port: 443,
-      password: "youshallnotpass",
-      secure: true
-    }
-  ],
-  send(id, payload) {
-    const guild = client.guilds.cache.get(id);
-    if (guild) guild.shard.send(payload);
-  }
-});
+let player;
 
 client.once("ready", () => {
-  console.log(`✅ Bot online: ${client.user.tag}`);
-  manager.init(client.user.id);
-});
-
-client.on("raw", (d) => manager.updateVoiceState(d));
-
-manager.on("nodeConnect", () => {
-  console.log("✅ Lavalink connected");
-});
-
-manager.on("nodeError", (node, error) => {
-  console.log("❌ Lavalink error:", error.message);
-});
-
-manager.on("trackEnd", (player, track) => {
-  player.queue.add(track);
-  player.play();
+  console.log("✅ Bot online: " + client.user.tag);
 });
 
 client.on("messageCreate", async (message) => {
 
   if (!message.guild || message.author.bot) return;
 
-  const args = message.content.split(" ");
-  const cmd = args.shift();
+  if (message.content === "!play") {
 
-  if (cmd === "!play") {
+    const voiceChannel = message.member.voice.channel;
 
-    const voice = message.member.voice.channel;
-
-    if (!voice) {
+    if (!voiceChannel) {
       return message.reply("❌ Bạn phải vào voice trước!");
     }
 
-    const player = manager.create({
-      guild: message.guild.id,
-      voiceChannel: voice.id,
-      textChannel: message.channel.id
+    const connection = joinVoiceChannel({
+      channelId: voiceChannel.id,
+      guildId: message.guild.id,
+      adapterCreator: message.guild.voiceAdapterCreator
     });
 
-    player.connect();
+    player = createAudioPlayer();
 
-    const res = await manager.search(STREAM_URL, message.author);
+    const resource = createAudioResource(STREAM_URL);
 
-    if (!res.tracks.length) {
-      return message.reply("❌ Không phát được link MP3.");
-    }
+    player.play(resource);
 
-    player.queue.add(res.tracks[0]);
+    connection.subscribe(player);
 
-    if (!player.playing) {
-      player.play();
-    }
+    player.on(AudioPlayerStatus.Idle, () => {
+
+      const newResource = createAudioResource(STREAM_URL);
+      player.play(newResource);
+
+    });
 
     message.reply("🎵 Đang phát nhạc (loop vô hạn)");
   }
 
-  if (cmd === "!stop") {
-
-    const player = manager.players.get(message.guild.id);
+  if (message.content === "!stop") {
 
     if (player) {
-      player.destroy();
+      player.stop();
       message.reply("⛔ Đã dừng nhạc");
     }
 
@@ -109,6 +76,4 @@ const PORT = process.env.PORT || 10000;
 http.createServer((req, res) => {
   res.writeHead(200);
   res.end("Bot running");
-}).listen(PORT, () => {
-  console.log("🌐 Web server running " + PORT);
-});
+}).listen(PORT);
