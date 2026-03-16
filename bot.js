@@ -4,11 +4,8 @@ const {
   createAudioPlayer,
   createAudioResource,
   getVoiceConnection,
-  StreamType,
-  AudioPlayerStatus
+  StreamType
 } = require("@discordjs/voice");
-
-const play = require("play-dl");
 
 const client = new Client({
   intents: [
@@ -25,28 +22,10 @@ client.once("clientReady", () => {
   console.log("✅ Bot đã online!");
 });
 
-async function playRadio(connection, url) {
-
-  const stream = await play.stream(url);
-
-  const resource = createAudioResource(stream.stream, {
-    inputType: StreamType.Opus
-  });
-
-  player.play(resource);
-  connection.subscribe(player);
-
-  player.on(AudioPlayerStatus.Idle, () => {
-    playRadio(connection, url); // phát lại 24/7
-  });
-
-}
-
 client.on("messageCreate", async (message) => {
 
   if (message.author.bot) return;
 
-  // RADIO
   if (message.content === "!radio") {
 
     const voiceChannel = message.member.voice.channel;
@@ -61,28 +40,22 @@ client.on("messageCreate", async (message) => {
       adapterCreator: message.guild.voiceAdapterCreator
     });
 
-    const radioURL = "https://www.youtube.com/live/jfKfPfyJRdk"; // lofi 24/7
+    const radioURL = "http://ice1.somafm.com/groovesalad-128-mp3"; // chill radio
 
-    try {
+    const resource = createAudioResource(radioURL, {
+      inputType: StreamType.Arbitrary
+    });
 
-      await playRadio(connection, radioURL);
+    player.play(resource);
+    connection.subscribe(player);
 
-      message.reply("📻 Radio đang phát 24/7");
-
-    } catch (err) {
-
-      console.log(err);
-      message.reply("❌ Không phát được radio");
-
-    }
+    message.reply("📻 Radio đang phát 24/7");
 
   }
 
   if (message.content === "!stop") {
-
     player.stop();
-    message.reply("⛔ Đã dừng radio");
-
+    message.reply("⛔ Đã dừng");
   }
 
   if (message.content === "!leave") {
