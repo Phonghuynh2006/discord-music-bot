@@ -1,5 +1,5 @@
 {
-  "name": "discord-mp3-bot",
+  "name": "discord-radio-bot",
   "version": "1.0.0",
   "main": "bot.js",
   "scripts": {
