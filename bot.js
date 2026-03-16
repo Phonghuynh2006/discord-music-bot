@@ -17,7 +17,7 @@ const client = new Client({
 
 let player;
 
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log("✅ Bot online: " + client.user.tag);
 });
 
@@ -27,14 +27,14 @@ client.on("messageCreate", async (message) => {
 
   if (message.content === "!play") {
 
-    const voiceChannel = message.member.voice.channel;
+    const voice = message.member.voice.channel;
 
-    if (!voiceChannel) {
+    if (!voice) {
       return message.reply("❌ Bạn phải vào voice trước!");
     }
 
     const connection = joinVoiceChannel({
-      channelId: voiceChannel.id,
+      channelId: voice.id,
       guildId: message.guild.id,
       adapterCreator: message.guild.voiceAdapterCreator
     });
@@ -48,32 +48,29 @@ client.on("messageCreate", async (message) => {
     connection.subscribe(player);
 
     player.on(AudioPlayerStatus.Idle, () => {
-
       const newResource = createAudioResource(STREAM_URL);
       player.play(newResource);
-
     });
 
-    message.reply("🎵 Đang phát nhạc (loop vô hạn)");
+    message.reply("🎵 Đang phát MP3 (loop vô hạn)");
   }
 
   if (message.content === "!stop") {
-
     if (player) {
       player.stop();
       message.reply("⛔ Đã dừng nhạc");
     }
-
   }
 
 });
 
 client.login(TOKEN);
 
-
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 8080;
 
 http.createServer((req, res) => {
   res.writeHead(200);
   res.end("Bot running");
-}).listen(PORT);
+}).listen(PORT, () => {
+  console.log("🌐 Web server running " + PORT);
+});
