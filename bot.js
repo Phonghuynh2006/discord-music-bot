@@ -1,8 +1,15 @@
-const ffmpeg = require("ffmpeg-static");
-process.env.FFMPEG_PATH = ffmpeg;
+const ffmpegPath = require("ffmpeg-static");
+const { spawn } = require("child_process");
 
 const { Client, GatewayIntentBits } = require("discord.js");
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, StreamType } = require("@discordjs/voice");
+const {
+  joinVoiceChannel,
+  createAudioPlayer,
+  createAudioResource,
+  AudioPlayerStatus,
+  StreamType
+} = require("@discordjs/voice");
+
 const http = require("http");
 
 const TOKEN = process.env.TOKEN;
@@ -20,8 +27,8 @@ const client = new Client({
 
 let player;
 
-client.once("clientReady", () => {
-  console.log("✅ Bot online: " + client.user.tag);
+client.once("ready", () => {
+  console.log("✅ Bot online:", client.user.tag);
 });
 
 client.on("messageCreate", async (message) => {
@@ -44,23 +51,34 @@ client.on("messageCreate", async (message) => {
 
     player = createAudioPlayer();
 
-    const resource = createAudioResource(STREAM_URL, {
-      inputType: StreamType.Arbitrary,
-      inlineVolume: true
-    });
+    function playStream() {
 
-    player.play(resource);
+      const ffmpeg = spawn(ffmpegPath, [
+        "-reconnect", "1",
+        "-reconnect_streamed", "1",
+        "-reconnect_delay_max", "5",
+        "-i", STREAM_URL,
+        "-f", "s16le",
+        "-ar", "48000",
+        "-ac", "2",
+        "pipe:1"
+      ]);
+
+      const resource = createAudioResource(ffmpeg.stdout, {
+        inputType: StreamType.Raw
+      });
+
+      player.play(resource);
+    }
+
+    playStream();
 
     connection.subscribe(player);
 
     player.on("error", console.error);
 
     player.on(AudioPlayerStatus.Idle, () => {
-      const newResource = createAudioResource(STREAM_URL, {
-        inputType: StreamType.Arbitrary,
-        inlineVolume: true
-      });
-      player.play(newResource);
+      playStream();
     });
 
     message.reply("🎵 Đang phát MP3 (loop vô hạn)");
@@ -83,5 +101,5 @@ http.createServer((req, res) => {
   res.writeHead(200);
   res.end("Bot running");
 }).listen(PORT, () => {
-  console.log("🌐 Web server running " + PORT);
+  console.log("🌐 Web server running", PORT);
 });
