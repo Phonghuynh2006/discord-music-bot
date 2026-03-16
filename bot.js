@@ -7,6 +7,9 @@ const {
   StreamType
 } = require("@discordjs/voice");
 
+const { spawn } = require("child_process");
+const ffmpeg = require("ffmpeg-static");
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -18,7 +21,7 @@ const client = new Client({
 
 const player = createAudioPlayer();
 
-client.once("clientReady", () => {
+client.once("ready", () => {
   console.log("✅ Bot đã online!");
 });
 
@@ -40,17 +43,24 @@ client.on("messageCreate", async (message) => {
       adapterCreator: message.guild.voiceAdapterCreator
     });
 
-    const radioURL = "http://ice1.somafm.com/groovesalad-128-mp3"; // chill radio
+    const radioURL = "http://ice1.somafm.com/groovesalad-128-mp3";
 
-    const resource = createAudioResource(radioURL, {
-      inputType: StreamType.Arbitrary
+    const ffmpegProcess = spawn(ffmpeg, [
+      "-i", radioURL,
+      "-f", "s16le",
+      "-ar", "48000",
+      "-ac", "2",
+      "pipe:1"
+    ]);
+
+    const resource = createAudioResource(ffmpegProcess.stdout, {
+      inputType: StreamType.Raw
     });
 
     player.play(resource);
     connection.subscribe(player);
 
     message.reply("📻 Radio đang phát 24/7");
-
   }
 
   if (message.content === "!stop") {
@@ -65,7 +75,6 @@ client.on("messageCreate", async (message) => {
     if (connection) connection.destroy();
 
     message.reply("🚪 Bot đã rời voice");
-
   }
 
 });
