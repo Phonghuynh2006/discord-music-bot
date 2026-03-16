@@ -7,7 +7,7 @@ const http = require("http");
 
 const TOKEN = process.env.TOKEN;
 
-const STREAM_URL = "https://drive.google.com/uc?export=download&id=1RbphI_EA_gREPo0fLsXS8jG7Mu8aEVLo";
+const STREAM_URL = "https://www.dropbox.com/scl/fi/gcxxdr46j0349wk2wafmt/NH-C-CHILL.mp3?rlkey=2zgdqfu4rc6lpyvf9zrwajatp&st=vxyplwf9&dl=0";
 
 const client = new Client({
   intents: [
