@@ -1,20 +1,14 @@
-const ffmpegPath = require("ffmpeg-static");
-const { spawn } = require("child_process");
-
 const { Client, GatewayIntentBits } = require("discord.js");
 const {
   joinVoiceChannel,
   createAudioPlayer,
   createAudioResource,
-  AudioPlayerStatus,
-  StreamType
+  getVoiceConnection,
+  StreamType,
+  AudioPlayerStatus
 } = require("@discordjs/voice");
 
-const http = require("http");
-
-const TOKEN = process.env.TOKEN;
-
-const STREAM_URL = "https://dl.dropboxusercontent.com/scl/fi/gcxxdr46j0349wk2wafmt/NH-C-CHILL.mp3";
+const play = require("play-dl");
 
 const client = new Client({
   intents: [
@@ -25,81 +19,82 @@ const client = new Client({
   ]
 });
 
-let player;
+const player = createAudioPlayer();
 
-client.once("ready", () => {
-  console.log("✅ Bot online:", client.user.tag);
+client.once("clientReady", () => {
+  console.log("✅ Bot đã online!");
 });
+
+async function playRadio(connection, url) {
+
+  const stream = await play.stream(url);
+
+  const resource = createAudioResource(stream.stream, {
+    inputType: StreamType.Opus
+  });
+
+  player.play(resource);
+  connection.subscribe(player);
+
+  player.on(AudioPlayerStatus.Idle, () => {
+    playRadio(connection, url); // phát lại 24/7
+  });
+
+}
 
 client.on("messageCreate", async (message) => {
 
-  if (!message.guild || message.author.bot) return;
+  if (message.author.bot) return;
 
-  if (message.content === "!play") {
+  // RADIO
+  if (message.content === "!radio") {
 
-    const voice = message.member.voice.channel;
+    const voiceChannel = message.member.voice.channel;
 
-    if (!voice) {
-      return message.reply("❌ Bạn phải vào voice trước!");
+    if (!voiceChannel) {
+      return message.reply("❌ Bạn phải vào voice trước");
     }
 
     const connection = joinVoiceChannel({
-      channelId: voice.id,
+      channelId: voiceChannel.id,
       guildId: message.guild.id,
       adapterCreator: message.guild.voiceAdapterCreator
     });
 
-    player = createAudioPlayer();
+    const radioURL = "https://www.youtube.com/live/jfKfPfyJRdk"; // lofi 24/7
 
-    function playStream() {
+    try {
 
-      const ffmpeg = spawn(ffmpegPath, [
-        "-reconnect", "1",
-        "-reconnect_streamed", "1",
-        "-reconnect_delay_max", "5",
-        "-i", STREAM_URL,
-        "-f", "s16le",
-        "-ar", "48000",
-        "-ac", "2",
-        "pipe:1"
-      ]);
+      await playRadio(connection, radioURL);
 
-      const resource = createAudioResource(ffmpeg.stdout, {
-        inputType: StreamType.Raw
-      });
+      message.reply("📻 Radio đang phát 24/7");
 
-      player.play(resource);
+    } catch (err) {
+
+      console.log(err);
+      message.reply("❌ Không phát được radio");
+
     }
 
-    playStream();
-
-    connection.subscribe(player);
-
-    player.on("error", console.error);
-
-    player.on(AudioPlayerStatus.Idle, () => {
-      playStream();
-    });
-
-    message.reply("🎵 Đang phát MP3 (loop vô hạn)");
   }
 
   if (message.content === "!stop") {
-    if (player) {
-      player.stop();
-      message.reply("⛔ Đã dừng nhạc");
-    }
+
+    player.stop();
+    message.reply("⛔ Đã dừng radio");
+
+  }
+
+  if (message.content === "!leave") {
+
+    const connection = getVoiceConnection(message.guild.id);
+
+    if (connection) connection.destroy();
+
+    message.reply("🚪 Bot đã rời voice");
+
   }
 
 });
 
-client.login(TOKEN);
-
-const PORT = process.env.PORT || 8080;
-
-http.createServer((req, res) => {
-  res.writeHead(200);
-  res.end("Bot running");
-}).listen(PORT, () => {
-  console.log("🌐 Web server running", PORT);
-});
+client.login(process.env.TOKEN);
