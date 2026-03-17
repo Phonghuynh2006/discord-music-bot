@@ -35,6 +35,13 @@
 		"libsodium-wrappers": "^0.7.15",
 		"opusscript": "^0.1.1",
 		"ziplayer": "latest"
+		"scripts": {
+  "build": "tsc",
+  "start": "node dist/index.js"
+},
+		"engines": {
+  "node": ">=22"
+}
 	},
 	"devDependencies": {
 		"@types/node": "^20.0.0",
