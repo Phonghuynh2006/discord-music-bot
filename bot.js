@@ -1,118 +1,60 @@
-const express = require("express");
-const app = express();
+import { Client, GatewayIntentBits } from "discord.js";
+import { PlayerManager } from "ziplayer";
+import { YouTubePlugin } from "@ziplayer/plugin";
 
-// Web server (tránh sleep VPS)
-app.get("/", (req, res) => {
-  res.send("Bot is running");
-});
-
-app.listen(3000, () => {
-  console.log("🌐 Web server running");
-});
-
-// ================= DISCORD =================
-
-const { Client, GatewayIntentBits } = require("discord.js");
-const {
-  joinVoiceChannel,
-  createAudioPlayer,
-  createAudioResource,
-  getVoiceConnection,
-  StreamType,
-  AudioPlayerStatus
-} = require("@discordjs/voice");
-
-const { spawn } = require("child_process");
-const ffmpeg = require("ffmpeg-static");
-
-// Tạo client
+// Tạo bot client
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildVoiceStates
-  ]
+  ],
 });
 
-// Tạo player
-const player = createAudioPlayer();
+// Tạo player manager
+const manager = new PlayerManager({
+  plugins: [new YouTubePlugin()],
+});
 
 // Khi bot online
 client.once("ready", () => {
-  console.log("✅ Bot đã online!");
+  console.log(`✅ Bot ready: ${client.user.tag}`);
 });
 
-// ================= MESSAGE =================
-
+// Lắng nghe tin nhắn
 client.on("messageCreate", async (message) => {
+  if (!message.content.startsWith("!play")) return;
+
+  const query = message.content.replace("!play ", "");
+  const voiceChannel = message.member.voice.channel;
+
+  if (!voiceChannel) {
+    return message.reply("❌ Bạn phải vào voice channel!");
+  }
+
   try {
-    if (message.author.bot) return;
+    // Tạo player
+    const player = await manager.create(message.guild.id);
 
-    // ================= RADIO =================
-    if (message.content === "!radio") {
-      const voiceChannel = message.member?.voice?.channel;
+    // Kết nối voice
+    await player.connect(voiceChannel);
 
-      if (!voiceChannel) {
-        return message.reply("❌ Bạn phải vào voice trước");
-      }
+    // Phát nhạc
+    await player.play(query, message.author.id);
 
-      const connection = joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: message.guild.id,
-        adapterCreator: message.guild.voiceAdapterCreator
-      });
-
-      const radioURL = "http://ice1.somafm.com/groovesalad-128-mp3";
-
-      const ffmpegProcess = spawn(ffmpeg, [
-        "-re",
-        "-i", radioURL,
-        "-analyzeduration", "0",
-        "-loglevel", "0",
-        "-f", "s16le",
-        "-ar", "48000",
-        "-ac", "2",
-        "pipe:1"
-      ]);
-
-      const resource = createAudioResource(ffmpegProcess.stdout, {
-        inputType: StreamType.Raw
-      });
-
-      player.play(resource);
-      connection.subscribe(player);
-
-      player.on(AudioPlayerStatus.Idle, () => {
-        console.log("🔁 Restart radio...");
-      });
-
-      return message.reply("📻 Radio đang phát 24/7");
-    }
-
-    // ================= STOP =================
-    if (message.content === "!stop") {
-      player.stop();
-      return message.reply("⛔ Đã dừng radio");
-    }
-
-    // ================= LEAVE =================
-    if (message.content === "!leave") {
-      const connection = getVoiceConnection(message.guild.id);
-
-      if (connection) {
-        connection.destroy();
-      }
-
-      return message.reply("🚪 Bot đã rời voice");
-    }
-
+    message.reply(`🎶 Đang phát: ${query}`);
   } catch (err) {
-    console.error("❌ Lỗi:", err);
-    message.reply("⚠️ Bot bị lỗi!");
+    console.error(err);
+    message.reply("❌ Lỗi khi phát nhạc!");
   }
 });
 
-// ================= LOGIN =================
+// Event khi bắt đầu phát
+manager.on("trackStart", (player, track) => {
+  const channel = player.userdata?.channel;
+  console.log(`Now playing: ${track.title}`);
+});
 
-client.login(process.env.TOKEN);
+// Login bot
+client.login("YOUR_BOT_TOKEN");
