@@ -1,105 +1,118 @@
 const express = require("express");
 const app = express();
 
+// Web server (tránh sleep VPS)
 app.get("/", (req, res) => {
-res.send("Bot is running");
+  res.send("Bot is running");
 });
 
 app.listen(3000, () => {
-console.log("🌐 Web server running");
+  console.log("🌐 Web server running");
 });
+
+// ================= DISCORD =================
 
 const { Client, GatewayIntentBits } = require("discord.js");
 const {
-joinVoiceChannel,
-createAudioPlayer,
-createAudioResource,
-getVoiceConnection,
-StreamType
+  joinVoiceChannel,
+  createAudioPlayer,
+  createAudioResource,
+  getVoiceConnection,
+  StreamType,
+  AudioPlayerStatus
 } = require("@discordjs/voice");
 
 const { spawn } = require("child_process");
 const ffmpeg = require("ffmpeg-static");
 
+// Tạo client
 const client = new Client({
-intents: [
-GatewayIntentBits.Guilds,
-GatewayIntentBits.GuildMessages,
-GatewayIntentBits.MessageContent,
-GatewayIntentBits.GuildVoiceStates
-]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates
+  ]
 });
 
+// Tạo player
 const player = createAudioPlayer();
 
-client.once("clientReady", () => {
-console.log("✅ Bot đã online!");
+// Khi bot online
+client.once("ready", () => {
+  console.log("✅ Bot đã online!");
 });
+
+// ================= MESSAGE =================
 
 client.on("messageCreate", async (message) => {
+  try {
+    if (message.author.bot) return;
 
-if (message.author.bot) return;
+    // ================= RADIO =================
+    if (message.content === "!radio") {
+      const voiceChannel = message.member?.voice?.channel;
 
-// RADIO
-if (message.content === "!radio") {
+      if (!voiceChannel) {
+        return message.reply("❌ Bạn phải vào voice trước");
+      }
 
-```
-const voiceChannel = message.member.voice.channel;
+      const connection = joinVoiceChannel({
+        channelId: voiceChannel.id,
+        guildId: message.guild.id,
+        adapterCreator: message.guild.voiceAdapterCreator
+      });
 
-if (!voiceChannel) {
-  return message.reply("❌ Bạn phải vào voice trước");
-}
+      const radioURL = "http://ice1.somafm.com/groovesalad-128-mp3";
 
-const connection = joinVoiceChannel({
-  channelId: voiceChannel.id,
-  guildId: message.guild.id,
-  adapterCreator: message.guild.voiceAdapterCreator
+      const ffmpegProcess = spawn(ffmpeg, [
+        "-re",
+        "-i", radioURL,
+        "-analyzeduration", "0",
+        "-loglevel", "0",
+        "-f", "s16le",
+        "-ar", "48000",
+        "-ac", "2",
+        "pipe:1"
+      ]);
+
+      const resource = createAudioResource(ffmpegProcess.stdout, {
+        inputType: StreamType.Raw
+      });
+
+      player.play(resource);
+      connection.subscribe(player);
+
+      player.on(AudioPlayerStatus.Idle, () => {
+        console.log("🔁 Restart radio...");
+      });
+
+      return message.reply("📻 Radio đang phát 24/7");
+    }
+
+    // ================= STOP =================
+    if (message.content === "!stop") {
+      player.stop();
+      return message.reply("⛔ Đã dừng radio");
+    }
+
+    // ================= LEAVE =================
+    if (message.content === "!leave") {
+      const connection = getVoiceConnection(message.guild.id);
+
+      if (connection) {
+        connection.destroy();
+      }
+
+      return message.reply("🚪 Bot đã rời voice");
+    }
+
+  } catch (err) {
+    console.error("❌ Lỗi:", err);
+    message.reply("⚠️ Bot bị lỗi!");
+  }
 });
 
-const radioURL = "http://ice1.somafm.com/groovesalad-128-mp3";
-
-const ffmpegProcess = spawn(ffmpeg, [
-  "-re",
-  "-i", radioURL,
-  "-analyzeduration", "0",
-  "-loglevel", "0",
-  "-f", "s16le",
-  "-ar", "48000",
-  "-ac", "2",
-  "pipe:1"
-]);
-
-const resource = createAudioResource(ffmpegProcess.stdout, {
-  inputType: StreamType.Raw
-});
-
-player.play(resource);
-connection.subscribe(player);
-
-message.reply("📻 Radio đang phát 24/7");
-```
-
-}
-
-// STOP
-if (message.content === "!stop") {
-player.stop();
-message.reply("⛔ Đã dừng radio");
-}
-
-// LEAVE
-if (message.content === "!leave") {
-
-```
-const connection = getVoiceConnection(message.guild.id);
-
-if (connection) connection.destroy();
-
-message.reply("🚪 Bot đã rời voice");
-```
-
-}
-
-});
+// ================= LOGIN =================
 
 client.login(process.env.TOKEN);
